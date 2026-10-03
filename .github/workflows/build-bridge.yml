@@ -13,11 +13,39 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build bridge
-        shell: cmd
+        shell: pwsh
         run: |
-          call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-          cl /nologo /LD /EHsc /O2 /std:c++17 "Nitoryu CN\NitoryuCNBridge.cpp" /link /OUT:"NitoryuCNBridge.dll"
-          dumpbin /exports NitoryuCNBridge.dll
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+          if (-not (Test-Path $vswhere)) {
+            throw "vswhere.exe not found: $vswhere"
+          }
+
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vsPath) {
+            throw "A Visual C++ x64 toolchain was not found on the runner."
+          }
+
+          $vcvars = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
+          if (-not (Test-Path $vcvars)) {
+            throw "vcvars64.bat not found: $vcvars"
+          }
+
+          Write-Host "Using Visual Studio: $vsPath"
+
+          $buildCmd = "`"$vcvars`" && cl /nologo /LD /EHsc /O2 /MT /std:c++17 `"Nitoryu CN\NitoryuCNBridge.cpp`" /link /OUT:`"NitoryuCNBridge.dll`" && dumpbin /exports NitoryuCNBridge.dll"
+          cmd.exe /d /c $buildCmd
+          if ($LASTEXITCODE -ne 0) {
+            throw "MSVC build failed with exit code $LASTEXITCODE"
+          }
+
+      - name: Verify export
+        shell: pwsh
+        run: |
+          $exports = (& dumpbin /exports NitoryuCNBridge.dll | Out-String)
+          Write-Host $exports
+          if ($exports -notmatch '\?startPlugin@@YAXXZ') {
+            throw "Expected RE_Kenshi plugin export was not found."
+          }
 
       - name: Assemble package
         shell: pwsh
@@ -26,7 +54,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $package | Out-Null
           Copy-Item "Nitoryu CN\Nitoryu CN.mod" $package
           Copy-Item "Nitoryu CN\RE_Kenshi.json" $package
-          Copy-Item "Nitoryu CN\NitoryuCNBridge.dll" $package
+          Copy-Item "NitoryuCNBridge.dll" (Join-Path $package "NitoryuCNBridge.dll")
           Copy-Item "Nitoryu CN\lang" (Join-Path $package "lang") -Recurse
           Compress-Archive -Path "$package\*" -DestinationPath (Join-Path $env:GITHUB_WORKSPACE "Nitoryu-CN-test.zip") -Force
 
