@@ -1,20 +1,18 @@
 # Nitoryu CN
 
-这是 [Nitoryu: Dual Wielding Combat System](https://steamcommunity.com/sharedfiles/filedetails/?id=3812165089) 的中文翻译 Mod，Mod 名称为 `Nitoryu CN`。
+这是 [Nitoryu: Dual Wielding Combat System](https://steamcommunity.com/sharedfiles/filedetails/?id=3812165089) 的中文语言文件。
 
 ## 安装
 
-安装后目录结构为：
+按原作者 `TRANSLATING.md` 的设计，本项目不是重新打包或修改 Nitoryu 本体，而是只提供：
 
-```text
-Nitoryu CN/
-├── Nitoryu CN.mod
-└── Nitoryu/
-    └── lang/
-        └── zh.ini
+```
+Nitoryu/
+└── lang/
+    └── zh.ini
 ```
 
-将整个 `Nitoryu CN` 文件夹放入 Kenshi 的 `mods` 目录，然后在 Mod Manager 中启用 `Nitoryu CN`，并将它放在原版 `Nitoryu` 后面。
+将 `Nitoryu\lang\zh.ini` 放入 Nitoryu 所在的 Mod 文件夹中即可。
 
 Nitoryu 会根据 Kenshi 的语言自动选择 `zh`；也可以在 `Nitoryu.ini` 的 `[General]` 中设置：
 
@@ -38,5 +36,4 @@ Kenshi 原版常用术语参考现有中文数据，例如「灵巧性」「近�
 
 ## 目录
 
-- `Nitoryu CN/Nitoryu CN.mod`：用于 Kenshi Mod Manager 识别的独立 Mod 文件
-- `Nitoryu CN/Nitoryu/lang/zh.ini`：中文语言文件
+- `Nitoryu/lang/zh.ini`：中文语言文件
