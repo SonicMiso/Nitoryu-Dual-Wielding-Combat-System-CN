@@ -37,10 +37,14 @@ jobs:
             throw "MSVC build failed with exit code $LASTEXITCODE"
           }
 
-          $exports = & (Join-Path $vsPath "VC\Tools\MSVC\") "*\bin\Hostx64\x64\dumpbin.exe" /exports NitoryuCNBridge.dll 2>&1
-          $exportText = $exports | Out-String
-          Write-Host $exportText
-          if ($exportText -notmatch "\?startPlugin@@YAXXZ") {
+          $dumpbin = Get-ChildItem (Join-Path $vsPath "VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe") | Select-Object -First 1
+          if (-not $dumpbin) {
+            throw "dumpbin.exe not found in the selected Visual Studio installation."
+          }
+
+          $exports = & $dumpbin.FullName /exports NitoryuCNBridge.dll 2>&1 | Out-String
+          Write-Host $exports
+          if ($exports -notmatch "\?startPlugin@@YAXXZ") {
             throw "Expected RE_Kenshi plugin export was not found."
           }
 
