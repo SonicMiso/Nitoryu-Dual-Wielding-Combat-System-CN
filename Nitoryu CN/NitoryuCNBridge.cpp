@@ -209,9 +209,76 @@ namespace
     }
 }
 
+    std::wstring GetLoadedModulePath(HMODULE module)
+    {
+        if (module == nullptr)
+            return L"";
+
+        wchar_t buffer[32768];
+        const DWORD capacity =
+            static_cast<DWORD>(sizeof(buffer) / sizeof(buffer[0]));
+        const DWORD length = GetModuleFileNameW(module, buffer, capacity);
+
+        if (length == 0 || length >= capacity)
+            return L"";
+
+        return std::wstring(buffer, length);
+    }
+
+    DWORD WINAPI MonitorNitoryuLoad(LPVOID)
+    {
+        const ULONGLONG start = GetTickCount64();
+        Log(L"[MONITOR] Nitoryu.dll present at preload: " +
+            std::wstring(GetModuleHandleW(L"Nitoryu.dll") ? L"YES" : L"NO"));
+
+        for (;;)
+        {
+            HMODULE module = GetModuleHandleW(L"Nitoryu.dll");
+            if (module != nullptr)
+            {
+                const std::wstring modulePath = GetLoadedModulePath(module);
+                const size_t slash = modulePath.find_last_of(L"\\/");
+
+                std::wstring moduleDir;
+                if (slash != std::wstring::npos)
+                    moduleDir = modulePath.substr(0, slash);
+
+                const std::wstring languagePath =
+                    moduleDir.empty() ? L"" : moduleDir + L"\\lang\\zh.ini";
+
+                Log(L"[MONITOR] Nitoryu.dll loaded after " +
+                    std::to_wstring(GetTickCount64() - start) +
+                    L" ms: " + modulePath);
+
+                if (!languagePath.empty())
+                {
+                    Log(L"[MONITOR] Nitoryu language file at load: " +
+                        languagePath + L" -> " +
+                        std::wstring(FileExists(languagePath) ? L"EXISTS" : L"MISSING"));
+                }
+
+                return 0;
+            }
+
+            if (GetTickCount64() - start >= 15000)
+            {
+                Log(L"[MONITOR] Nitoryu.dll was not observed within 15 seconds.");
+                return 0;
+            }
+
+            Sleep(50);
+        }
+    }
+
 // RE_Kenshi looks up the MSVC C++ decorated name:
 // ?startPlugin@@YAXXZ
 __declspec(dllexport) void startPlugin()
 {
     CopyTranslationFile();
+
+    // Diagnostic only: confirm that Nitoryu is not already loaded and record
+    // the exact DLL path and zh.ini presence when it is eventually loaded.
+    HANDLE thread = CreateThread(nullptr, 0, MonitorNitoryuLoad, nullptr, 0, nullptr);
+    if (thread != nullptr)
+        CloseHandle(thread);
 }
