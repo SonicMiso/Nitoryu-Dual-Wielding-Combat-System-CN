@@ -91,25 +91,55 @@ namespace
         }
 
         /*
-         * Workshop layout:
-         *   ...\steamapps\workshop\content\233860\<mod id>\
+         * Resolve the Steam Workshop location from the Kenshi executable.
+         * The translation mod may be installed as a local mod:
          *
-         * The bridge itself is stored in the translation mod directory,
-         * so its parent directory is the Kenshi Workshop content directory.
+         *   ...\\Kenshi\\mods\\Nitoryu CN\\NitoryuCNBridge.dll
+         *
+         * The subscribed Nitoryu Workshop item is instead located at:
+         *
+         *   ...\\steamapps\\workshop\\content\\233860\\3812165089
          */
-        const size_t slash = bridgeDir.find_last_of(L"\\/");
-        if (slash == std::wstring::npos)
+        wchar_t exePathBuffer[32768];
+        const DWORD exeLength = GetModuleFileNameW(
+            nullptr, exePathBuffer, static_cast<DWORD>(sizeof(exePathBuffer) / sizeof(exePathBuffer[0])));
+
+        if (exeLength == 0 ||
+            exeLength >= (sizeof(exePathBuffer) / sizeof(exePathBuffer[0])))
         {
-            Log(L"[ERROR] Could not determine Workshop content directory.");
+            Log(L"[ERROR] Could not determine Kenshi executable path.");
             return false;
         }
 
-        const std::wstring workshopGameDir = bridgeDir.substr(0, slash);
+        const std::wstring exePath(exePathBuffer, exeLength);
+        const size_t exeSlash = exePath.find_last_of(L"\\/");
+        if (exeSlash == std::wstring::npos)
+        {
+            Log(L"[ERROR] Could not determine Kenshi installation directory.");
+            return false;
+        }
+
+        const std::wstring kenshiDir = exePath.substr(0, exeSlash);
+        const size_t commonSlash = kenshiDir.find_last_of(L"\\/");
+        if (commonSlash == std::wstring::npos)
+        {
+            Log(L"[ERROR] Could not determine Steam common directory.");
+            return false;
+        }
+
+        const std::wstring commonDir = kenshiDir.substr(0, commonSlash);
+        const size_t steamappsSlash = commonDir.find_last_of(L"\\/");
+        if (steamappsSlash == std::wstring::npos)
+        {
+            Log(L"[ERROR] Could not determine Steam installation directory.");
+            return false;
+        }
+
+        const std::wstring steamappsDir = commonDir.substr(0, steamappsSlash);
 
         // Original Nitoryu Workshop item.
         const std::wstring nitoryuRoot =
-            workshopGameDir + L"\\3812165089";
-
+            steamappsDir + L"\\workshop\\content\\233860\\3812165089";
         const std::wstring source =
             bridgeDir + L"\\lang\\zh.ini";
         const std::wstring targetDir =
@@ -147,6 +177,8 @@ namespace
             return false;
         }
 
+        Log(L"[OK] Kenshi executable: " + exePath);
+        Log(L"[OK] Workshop Nitoryu: " + nitoryuRoot);
         Log(L"[OK] Copied " + source + L" -> " + target);
         return true;
     }
