@@ -37,5 +37,3 @@ Kenshi 原版常用术语参考现有中文数据，例如「灵巧性」「近�
 ## 目录
 
 - `Nitoryu/lang/zh.ini`：中文语言文件
-- `source/TRANSLATING.md`：原作者提供的翻译说明，作为本翻译的制作依据
-- `tools/lang_check.py`：原作者提供的翻译检查脚本
