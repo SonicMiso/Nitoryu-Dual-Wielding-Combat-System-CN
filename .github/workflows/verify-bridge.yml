@@ -1,0 +1,45 @@
+name: Verify Nitoryu CN bridge
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build bridge
+        shell: cmd
+        run: |
+          call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          cl /nologo /LD /EHsc /O2 /MT /std:c++17 "Nitoryu CN\NitoryuCNBridge.cpp" /link /OUT:"NitoryuCNBridge.dll"
+          dumpbin /exports NitoryuCNBridge.dll
+
+      - name: Verify export
+        shell: pwsh
+        run: |
+          $exports = (& dumpbin /exports NitoryuCNBridge.dll | Out-String)
+          Write-Host $exports
+          if ($exports -notmatch '\?startPlugin@@YAXXZ') {
+            throw "Expected RE_Kenshi plugin export was not found."
+          }
+
+      - name: Assemble package
+        shell: pwsh
+        run: |
+          $package = Join-Path $env:RUNNER_TEMP "Nitoryu CN"
+          New-Item -ItemType Directory -Force -Path $package | Out-Null
+          Copy-Item "Nitoryu CN\Nitoryu CN.mod" $package
+          Copy-Item "Nitoryu CN\RE_Kenshi.json" $package
+          Copy-Item "Nitoryu CN\NitoryuCNBridge.dll" $package
+          Copy-Item "Nitoryu CN\lang" (Join-Path $package "lang") -Recurse
+          Compress-Archive -Path "$package\*" -DestinationPath (Join-Path $env:GITHUB_WORKSPACE "Nitoryu-CN-test.zip") -Force
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nitoryu-CN-test
+          path: Nitoryu-CN-test.zip
