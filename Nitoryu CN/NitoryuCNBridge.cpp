@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <string>
+#include <cwchar>
 
 namespace
 {
@@ -91,17 +92,17 @@ namespace
         }
 
         /*
-         * Kenshi is installed under Steam's:
+         * RE_Kenshi may restart Kenshi from:
          *
-         *   <Steam>\\steamapps\\common\\Kenshi
+         *   <Steam>\\steamapps\\common\\Kenshi\\RE_Kenshi\\kenshi_x64.exe
          *
-         * The Workshop content directory is a sibling of "common":
+         * or run the normal executable directly:
          *
-         *   <Steam>\\steamapps\\workshop\\content\\233860\\3812165089
+         *   <Steam>\\steamapps\\common\\Kenshi\\kenshi_x64.exe
          *
-         * Start from the running Kenshi executable and explicitly walk:
-         *   Kenshi -> common -> steamapps
-         * rather than constructing a path relative to this bridge DLL.
+         * Therefore, do not assume a fixed number of parent directories.
+         * Walk upward from the running executable until the directory named
+         * "steamapps" is found, then use its sibling "workshop" directory.
          */
         wchar_t exePathBuffer[32768];
         const DWORD exeCapacity =
@@ -118,33 +119,42 @@ namespace
         const size_t exeSlash = exePath.find_last_of(L"\\/");
         if (exeSlash == std::wstring::npos)
         {
-            Log(L"[ERROR] Could not determine Kenshi installation directory.");
+            Log(L"[ERROR] Could not determine Kenshi executable directory.");
             return false;
         }
 
-        const std::wstring kenshiDir = exePath.substr(0, exeSlash);
-        const size_t commonSlash = kenshiDir.find_last_of(L"\\/");
-        if (commonSlash == std::wstring::npos)
+        std::wstring currentDir = exePath.substr(0, exeSlash);
+        std::wstring steamappsDir;
+
+        for (;;)
         {
-            Log(L"[ERROR] Could not determine Steam common directory.");
-            return false;
+            const size_t slash = currentDir.find_last_of(L"\\/");
+            const size_t componentStart =
+                slash == std::wstring::npos ? 0 : slash + 1;
+            const std::wstring component =
+                currentDir.substr(componentStart);
+
+            if (_wcsicmp(component.c_str(), L"steamapps") == 0)
+            {
+                steamappsDir = currentDir;
+                break;
+            }
+
+            if (slash == std::wstring::npos)
+                break;
+
+            const std::wstring parent = currentDir.substr(0, slash);
+            if (parent == currentDir)
+                break;
+
+            currentDir = parent;
         }
 
-        // The parent of "Kenshi" is the Steam "common" directory,
-        // whose parent is actually "steamapps".
-        const std::wstring commonDir = kenshiDir.substr(0, commonSlash);
-
-        const size_t steamappsSlash = commonDir.find_last_of(L"\\/");
-        if (steamappsSlash == std::wstring::npos)
+        if (steamappsDir.empty())
         {
-            Log(L"[ERROR] Could not determine Steam steamapps directory.");
+            Log(L"[ERROR] Could not locate Steam steamapps directory from Kenshi executable: " + exePath);
             return false;
         }
-
-        // Example:
-        //   commonDir   = D:\steam\steamapps\common
-        //   steamappsDir= D:\steam\steamapps
-        const std::wstring steamappsDir = commonDir.substr(0, steamappsSlash);
 
         // Expected:
         //   <Steam>\\steamapps\\workshop\\content\\233860\\3812165089
