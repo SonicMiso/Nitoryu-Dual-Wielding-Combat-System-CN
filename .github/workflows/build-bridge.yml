@@ -12,7 +12,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build bridge
+      - name: Build and verify bridge
         shell: pwsh
         run: |
           $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
@@ -31,19 +31,16 @@ jobs:
           }
 
           Write-Host "Using Visual Studio: $vsPath"
-
           $buildCmd = "`"$vcvars`" && cl /nologo /LD /EHsc /O2 /MT /std:c++17 `"Nitoryu CN\NitoryuCNBridge.cpp`" /link /OUT:`"NitoryuCNBridge.dll`" && dumpbin /exports NitoryuCNBridge.dll"
           cmd.exe /d /c $buildCmd
           if ($LASTEXITCODE -ne 0) {
             throw "MSVC build failed with exit code $LASTEXITCODE"
           }
 
-      - name: Verify export
-        shell: pwsh
-        run: |
-          $exports = (& dumpbin /exports NitoryuCNBridge.dll | Out-String)
-          Write-Host $exports
-          if ($exports -notmatch '\?startPlugin@@YAXXZ') {
+          $exports = & (Join-Path $vsPath "VC\Tools\MSVC\") "*\bin\Hostx64\x64\dumpbin.exe" /exports NitoryuCNBridge.dll 2>&1
+          $exportText = $exports | Out-String
+          Write-Host $exportText
+          if ($exportText -notmatch "\?startPlugin@@YAXXZ") {
             throw "Expected RE_Kenshi plugin export was not found."
           }
 
