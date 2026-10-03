@@ -91,21 +91,24 @@ namespace
         }
 
         /*
-         * Resolve the Steam Workshop location from the Kenshi executable.
-         * The translation mod may be installed as a local mod:
+         * Kenshi is installed under Steam's:
          *
-         *   ...\\Kenshi\\mods\\Nitoryu CN\\NitoryuCNBridge.dll
+         *   <Steam>\\steamapps\\common\\Kenshi
          *
-         * The subscribed Nitoryu Workshop item is instead located at:
+         * The Workshop content directory is a sibling of "common":
          *
-         *   ...\\steamapps\\workshop\\content\\233860\\3812165089
+         *   <Steam>\\steamapps\\workshop\\content\\233860\\3812165089
+         *
+         * Start from the running Kenshi executable and explicitly walk:
+         *   Kenshi -> common -> steamapps
+         * rather than constructing a path relative to this bridge DLL.
          */
         wchar_t exePathBuffer[32768];
-        const DWORD exeLength = GetModuleFileNameW(
-            nullptr, exePathBuffer, static_cast<DWORD>(sizeof(exePathBuffer) / sizeof(exePathBuffer[0])));
+        const DWORD exeCapacity =
+            static_cast<DWORD>(sizeof(exePathBuffer) / sizeof(exePathBuffer[0]));
+        const DWORD exeLength = GetModuleFileNameW(nullptr, exePathBuffer, exeCapacity);
 
-        if (exeLength == 0 ||
-            exeLength >= (sizeof(exePathBuffer) / sizeof(exePathBuffer[0])))
+        if (exeLength == 0 || exeLength >= exeCapacity)
         {
             Log(L"[ERROR] Could not determine Kenshi executable path.");
             return false;
@@ -128,18 +131,23 @@ namespace
         }
 
         const std::wstring commonDir = kenshiDir.substr(0, commonSlash);
+
         const size_t steamappsSlash = commonDir.find_last_of(L"\\/");
         if (steamappsSlash == std::wstring::npos)
         {
-            Log(L"[ERROR] Could not determine Steam installation directory.");
+            Log(L"[ERROR] Could not determine Steam steamapps directory.");
             return false;
         }
 
         const std::wstring steamappsDir = commonDir.substr(0, steamappsSlash);
 
-        // Original Nitoryu Workshop item.
+        // Expected:
+        //   <Steam>\\steamapps\\workshop\\content\\233860\\3812165089
+        const std::wstring workshopContentDir =
+            steamappsDir + L"\\workshop\\content\\233860";
+
         const std::wstring nitoryuRoot =
-            steamappsDir + L"\\workshop\\content\\233860\\3812165089";
+            workshopContentDir + L"\\3812165089";
         const std::wstring source =
             bridgeDir + L"\\lang\\zh.ini";
         const std::wstring targetDir =
@@ -178,6 +186,8 @@ namespace
         }
 
         Log(L"[OK] Kenshi executable: " + exePath);
+        Log(L"[OK] Steam steamapps: " + steamappsDir);
+        Log(L"[OK] Workshop content: " + workshopContentDir);
         Log(L"[OK] Workshop Nitoryu: " + nitoryuRoot);
         Log(L"[OK] Copied " + source + L" -> " + target);
         return true;
