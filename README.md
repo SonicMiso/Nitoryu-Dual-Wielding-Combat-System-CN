@@ -1,4 +1,4 @@
-# Nitoryu: Dual Wielding Combat System 中文翻译
+# Nitoryu CN
 
 这是 [Nitoryu: Dual Wielding Combat System](https://steamcommunity.com/sharedfiles/filedetails/?id=3812165089) 的中文语言文件。
 
