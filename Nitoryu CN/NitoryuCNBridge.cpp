@@ -130,6 +130,8 @@ namespace
             return false;
         }
 
+        // The parent of "Kenshi" is the Steam "common" directory,
+        // whose parent is actually "steamapps".
         const std::wstring commonDir = kenshiDir.substr(0, commonSlash);
 
         const size_t steamappsSlash = commonDir.find_last_of(L"\\/");
@@ -139,6 +141,9 @@ namespace
             return false;
         }
 
+        // Example:
+        //   commonDir   = D:\steam\steamapps\common
+        //   steamappsDir= D:\steam\steamapps
         const std::wstring steamappsDir = commonDir.substr(0, steamappsSlash);
 
         // Expected:
